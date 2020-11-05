@@ -5,7 +5,7 @@ rules:                      # Array of rules
     mergeMethod: merge  # Optional, one of [none, merge, squash, rebase, hardreset], Default: none.
     mergeUnstable: false    # Optional, merge pull request even when the mergeable_state is not clean. Default: false
   - base: dev
-    upstream: django-DefectDojo:master        # Required. Can be a branch in the same forked repo.
+    upstream: django-DefectDojo:dev        # Required. Can be a branch in the same forked repo.
     mergeMethod: merge  # Optional, one of [none, merge, squash, rebase, hardreset], Default: none.
     mergeUnstable: false    # Optional, merge pull request even when the mergeable_state is not clean. Default: false
     assignees:              # Optional
