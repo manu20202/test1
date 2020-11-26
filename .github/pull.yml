@@ -8,8 +8,6 @@ rules:                      # Array of rules
     upstream: DefectDojo:dev        # Required. Can be a branch in the same forked repo.
     mergeMethod: merge  # Optional, one of [none, merge, squash, rebase, hardreset], Default: none.
     mergeUnstable: false    # Optional, merge pull request even when the mergeable_state is not clean. Default: false
-    assignees:              # Optional
-      - cloudbees/product-security-team
     reviewers:              # Optional
       - cloudbees/product-security-team
     conflictReviewers:      # Optional, on merge conflict assign a reviewer
