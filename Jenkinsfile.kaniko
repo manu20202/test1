@@ -3,11 +3,11 @@ import groovy.transform.Field
 @Field
 def DOCKER_IMAGES = [
     django : [ 
-        image: "cloudbees/defectdojo-django",
+        image: "cloudbees/defectdojo-django-test",
         dockerfile: "Dockerfile.django",
     ],
     nginx: [
-        image: "cloudbees/defectdojo-nginx",
+        image: "cloudbees/defectdojo-nginx-test",
         dockerfile: "Dockerfile.nginx",
     ]
 ]
