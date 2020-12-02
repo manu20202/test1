@@ -44,7 +44,7 @@ pipeline {
         )
         string(
             name: 'SlackChannel',
-            defaultValue: "#group-prodsec-guild",
+            defaultValue: "#notify-product-security",
             description: "Slack channel where the build notifications are sent"
         )
     }
@@ -56,7 +56,7 @@ pipeline {
     }
 
     environment {
-        DOCKER_REPO_NAME = 'docker.io'
+        DOCKER__NAME = 'docker.io'
     }
 
     agent {
