@@ -12,8 +12,8 @@ CELERY_BEAT_SCHEDULE['auto-delete-engagements'] = {
 
 CELERY_BEAT_SCHEDULE['jira_status_reconciliation'] = { 
     'task': 'dojo.tasks.jira_status_reconciliation_task',
-    # 'schedule': crontab(hour=9, minute=30)
-    'kwargs': {'mode': 'import_status_from_jira', 'dryrun': True, 'daysback': 180, 'product': None, 'engagement': None}
+    'schedule': 'schedule': timedelta(hours=24),
+    'kwargs': {'mode': 'import_status_from_jira', 'dryrun': False, 'daysback': 2}
 }
 
 # Override deduplication for certain parsers
