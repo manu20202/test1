@@ -138,7 +138,7 @@ django_filter=open_findings_filter, prefetch_type='all'):
 
     elif eid:
         engagement = get_object_or_404(Engagement, id=eid)
-        findings = Finding.objects.filter(test__engagement=eid).order_by('numerical_severity')
+        findings = findings.filter(test__engagement=eid)
 
         show_product_column = False
         product_tab = Product_Tab(engagement.product_id, title=engagement.name, tab="engagements")
@@ -194,7 +194,7 @@ django_filter=open_findings_filter, prefetch_type='all'):
 def prefetch_for_findings(findings, prefetch_type='all'):
     prefetched_findings = findings
     if isinstance(findings, QuerySet):  # old code can arrive here with prods being a list because the query was already executed
-        prefetched_findings = prefetched_findings.select_related('reporter')
+        prefetched_findings = prefetched_findings.prefetch_related('reporter')
         prefetched_findings = prefetched_findings.prefetch_related('jira_issue__jira_project__jira_instance')
         prefetched_findings = prefetched_findings.prefetch_related('test__test_type')
         prefetched_findings = prefetched_findings.prefetch_related('test__engagement__jira_project__jira_instance')
@@ -229,7 +229,7 @@ def prefetch_for_findings(findings, prefetch_type='all'):
 def prefetch_for_similar_findings(findings):
     prefetched_findings = findings
     if isinstance(findings, QuerySet):  # old code can arrive here with prods being a list because the query was already executed
-        prefetched_findings = prefetched_findings.select_related('reporter')
+        prefetched_findings = prefetched_findings.prefetch_related('reporter')
         prefetched_findings = prefetched_findings.prefetch_related('jira_issue__jira_project__jira_instance')
         prefetched_findings = prefetched_findings.prefetch_related('test__test_type')
         prefetched_findings = prefetched_findings.prefetch_related('test__engagement__jira_project__jira_instance')
@@ -1819,8 +1819,6 @@ def merge_finding_product(request, pid):
 
 
 # bulk update and delete are combined, so we can't have the nice user_must_be_authorized decorator (yet)
-@user_passes_test(lambda u: u.is_staff)
-# @user_must_be_authorized(Product, 'staff', 'pid')
 def finding_bulk_update_all(request, pid=None):
     form = FindingBulkUpdateForm(request.POST)
     now = timezone.now()
@@ -1828,37 +1826,49 @@ def finding_bulk_update_all(request, pid=None):
 
     if request.method == "POST":
         finding_to_update = request.POST.getlist('finding_to_update')
-        if request.POST.get('delete_bulk_findings') and finding_to_update:
-            finds = Finding.objects.filter(id__in=finding_to_update)
+        finds = Finding.objects.filter(id__in=finding_to_update).order_by("id")
+        total_find_count = finds.count()
+        skipped_find_count = 0
 
-            # make sure users are not deleting stuff they are not authorized for
-            if not request.user.is_staff and not request.user.is_superuser:
-                if not settings.AUTHORIZED_USERS_ALLOW_DELETE:
-                    raise PermissionDenied()
-
-                finds = finds.filter(
-                    Q(test__engagement__product__authorized_users__in=[request.user]) |
-                    Q(test__engagement__product__prod_type__authorized_users__in=[request.user])
-                )
-
-            product_calc = list(Product.objects.filter(engagement__test__finding__id__in=finding_to_update).distinct())
-            finds.delete()
-            for prod in product_calc:
-                calculate_grade(prod)
-        else:
+        prods = set([find.test.engagement.product for find in finds])
+        if request.POST.get('delete_bulk_findings'):
             if form.is_valid() and finding_to_update:
-                finding_to_update = request.POST.getlist('finding_to_update')
-                finds = Finding.objects.filter(id__in=finding_to_update).order_by("finding__test__engagement__product__id")
-
                 # make sure users are not deleting stuff they are not authorized for
                 if not request.user.is_staff and not request.user.is_superuser:
-                    if not settings.AUTHORIZED_USERS_ALLOW_CHANGE:
+                    if not settings.AUTHORIZED_USERS_ALLOW_DELETE:
                         raise PermissionDenied()
 
                     finds = finds.filter(
                         Q(test__engagement__product__authorized_users__in=[request.user]) |
                         Q(test__engagement__product__prod_type__authorized_users__in=[request.user])
-                    )
+                    ).distinct()
+
+                skipped_find_count = total_find_count - finds.count()
+
+                finds.delete()
+                for prod in prods:
+                    calculate_grade(prod)
+
+                if skipped_find_count > 0:
+                    add_error_message_to_response('skipped %i findings because you''re not authorized', skipped_find_count)
+
+        else:
+            if form.is_valid() and finding_to_update:
+
+                # make sure users are not deleting stuff they are not authorized for
+                if not request.user.is_staff and not request.user.is_superuser:
+                    if not settings.AUTHORIZED_USERS_ALLOW_CHANGE and not settings.AUTHORIZED_USERS_ALLOW_STAFF:
+                        raise PermissionDenied()
+
+                    finds = finds.filter(
+                        Q(test__engagement__product__authorized_users__in=[request.user]) |
+                        Q(test__engagement__product__prod_type__authorized_users__in=[request.user])
+                    ).distinct()
+
+                    skipped_find_count = total_find_count - finds.count()
+
+                if skipped_find_count > 0:
+                    add_error_message_to_response('skipped %i findings because you''re not authorized', skipped_find_count)
 
                 finds = prefetch_for_findings(finds)
                 if form.cleaned_data['severity'] or form.cleaned_data['status']:
@@ -1881,9 +1891,10 @@ def finding_bulk_update_all(request, pid=None):
 
                         # use super to avoid all custom logic in our overriden save method
                         # it will trigger the pre_save signal
-                        logger.debug('bulk update save')
                         find.save_no_options()
-                        logger.debug('bulk update save done')
+
+                    for prod in prods:
+                        calculate_grade(prod)
 
                 skipped_risk_accept_count = 0
                 if form.cleaned_data['risk_acceptance']:
@@ -1895,6 +1906,9 @@ def finding_bulk_update_all(request, pid=None):
                                 ra_helper.simple_risk_accept(finding)
                         elif form.cleaned_data['risk_unaccept']:
                             ra_helper.risk_unaccept(finding)
+
+                    for prod in prods:
+                        calculate_grade(prod)
 
                 if form.cleaned_data['finding_group_create']:
                     logger.debug('finding_group_create checked!')
@@ -2004,6 +2018,7 @@ def finding_bulk_update_all(request, pid=None):
 
                 error_counts = defaultdict(lambda: 0)
                 success_count = 0
+
                 for finding in finds:
                     from dojo.tools import tool_issue_updater
                     tool_issue_updater.async_tool_issue_update(finding)

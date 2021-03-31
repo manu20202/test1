@@ -750,6 +750,11 @@ CELERY_BEAT_SCHEDULE = {
     #     'schedule': timedelta(hours=12),
     #     'kwargs': {'mode': 'reconcile', 'dryrun': True, 'daysback': 10, 'product': None, 'engagement': None}
     # },
+    # 'fix_loop_duplicates': {
+    #     'task': 'dojo.tasks.fix_loop_duplicates_task',
+    #     'schedule': timedelta(hours=12)
+    # },
+
 
 }
 
@@ -786,6 +791,7 @@ HASHCODE_FIELDS_PER_SCANNER = {
     # Including the severity in the hash_code keeps those findings not duplicate
     'Anchore Engine Scan': ['title', 'severity', 'component_name', 'component_version', 'file_path'],
     'Checkmarx Scan': ['cwe', 'severity', 'file_path'],
+    'Checkmarx OSA': ['cve', 'component_name'],
     'SonarQube Scan': ['cwe', 'severity', 'file_path'],
     'Dependency Check Scan': ['cve', 'file_path'],
     'Dependency Track Finding Packaging Format (FPF) Export': ['component_name', 'component_version', 'cwe', 'cve'],
@@ -818,6 +824,7 @@ HASHCODE_FIELDS_PER_SCANNER = {
 HASHCODE_ALLOWS_NULL_CWE = {
     'Anchore Engine Scan': True,
     'Checkmarx Scan': False,
+    'Checkmarx OSA': True,
     'SonarQube Scan': False,
     'Dependency Check Scan': True,
     'Nessus Scan': True,
@@ -861,6 +868,7 @@ DEDUPLICATION_ALGORITHM_PER_PARSER = {
     'Burp REST API': DEDUPE_ALGO_UNIQUE_ID_FROM_TOOL,
     'Checkmarx Scan detailed': DEDUPE_ALGO_UNIQUE_ID_FROM_TOOL,
     'Checkmarx Scan': DEDUPE_ALGO_HASH_CODE,
+    'Checkmarx OSA': DEDUPE_ALGO_UNIQUE_ID_FROM_TOOL_OR_HASH_CODE,
     'Dependency Track Finding Packaging Format (FPF) Export': DEDUPE_ALGO_HASH_CODE,
     'SonarQube Scan detailed': DEDUPE_ALGO_UNIQUE_ID_FROM_TOOL,
     'SonarQube Scan': DEDUPE_ALGO_HASH_CODE,
@@ -994,7 +1002,7 @@ LOGGING = {
             'propagate': False,
         },
         'titlecase': {
-            # The markdown library is too verbose in it's logging, reducing the verbosity in our logs.
+            # The titlecase library is too verbose in it's logging, reducing the verbosity in our logs.
             'handlers': [r'%s' % LOGGING_HANDLER],
             'level': 'WARNING',
             'propagate': False,

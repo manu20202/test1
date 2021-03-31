@@ -135,7 +135,6 @@ def can_be_pushed_to_jira(obj, form=None):
 
 # use_inheritance=True means get jira_project config from product if engagement itself has none
 def get_jira_project(obj, use_inheritance=True):
-    print('get jira project for: ' + str(obj.id) + ':' + str(obj))
     if not is_jira_enabled():
         return None
 
@@ -331,12 +330,12 @@ def has_jira_configured(obj):
     return get_jira_project(obj) is not None
 
 
-def get_jira_connection_raw(jira_server, jira_username, jira_password):
+def get_jira_connection_raw(jira_server, jira_username, jira_password, validate=False):
     try:
         jira = JIRA(server=jira_server,
                 basic_auth=(jira_username, jira_password),
                 options={"verify": settings.JIRA_SSL_VERIFY},
-                max_retries=0)
+                max_retries=0, validate=validate)
 
         logger.debug('logged in to JIRA ''%s'' successfully', jira_server)
 
@@ -344,19 +343,22 @@ def get_jira_connection_raw(jira_server, jira_username, jira_password):
     except JIRAError as e:
         logger.exception(e)
 
-        if e.status_code in [401, 403]:
-            log_jira_generic_alert('JIRA Authentication Error', e)
-        else:
-            log_jira_generic_alert('Unknown JIRA Connection Error', e)
+        error_message = e.text if hasattr(e, 'text') else e.message if hasattr(e, 'message') else e.args[0]
 
-        add_error_message_to_response('Unable to authenticate to JIRA. Please check the URL, username, password, captcha challenge, Network connection. Details in alert on top right. ' + str(e))
+        if e.status_code in [401, 403]:
+            log_jira_generic_alert('JIRA Authentication Error', error_message)
+        else:
+            log_jira_generic_alert('Unknown JIRA Connection Error', error_message)
+
+        add_error_message_to_response('Unable to authenticate to JIRA. Please check the URL, username, password, captcha challenge, Network connection. Details in alert on top right. ' + str(error_message))
         raise e
 
     except requests.exceptions.RequestException as re:
         logger.exception(re)
+        error_message = re.text if hasattr(re, 'text') else re.message if hasattr(re, 'message') else re.args[0]
         log_jira_generic_alert('Unknown JIRA Connection Error', re)
 
-        add_error_message_to_response('Unable to authenticate to JIRA. Please check the URL, username, password, captcha challenge, Network connection. Details in alert on top right. ' + str(re))
+        add_error_message_to_response('Unable to authenticate to JIRA. Please check the URL, username, password, captcha challenge, Network connection. Details in alert on top right. ' + str(error_message))
 
         raise re
 
