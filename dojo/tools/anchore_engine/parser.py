@@ -1,4 +1,5 @@
 import json
+import re
 
 from dojo.models import Finding
 
@@ -36,9 +37,17 @@ class AnchoreEngineParser(object):
                 sev = 'Info'
 
             mitigation = "Upgrade to " + item['package_name'] + ' ' + item['fix'] + '\n'
-            mitigation += "URL: " + item['url'] + '\n'
 
+            # rewrite references when we see an internal url
+            # internal anchore servers run on port 8228 and will output such a link
             references = item['url']
+            urlpattern = re.compile(r'(.*:8228.*)(/vulnerabilities.*)')
+            if urlpattern.match(item['url']):
+                # only caring about prod for now
+                # from: http://anchore-anchore-engine-api:8228/v1/query/vulnerabilities?id=VULNDB-198882
+                # to: https://anchore.cloudbees.com/service/query/vulnerabilities?id=VULNDB-243350
+                anchore_prod_base = "https://anchore.cloudbees.com/service/query"
+                references = re.sub(urlpattern, anchore_prod_base + r'\2', item['url'])
 
             dupe_key = '|'.join([
                 item.get('image_digest', item.get('imageDigest', 'None')),  # depending on version image_digest/imageDigest
