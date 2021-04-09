@@ -11,13 +11,13 @@ CELERY_BEAT_SCHEDULE['auto-delete-engagements'] = {
 }
 
 # Temp fix - fix possible circular dups
-CELERY_BEAT_SCHEDULE['fix_loop_duplicates'] = { 
+CELERY_BEAT_SCHEDULE['fix_loop_duplicates'] = {
     'task': 'dojo.tasks.fix_loop_duplicates_task',
     'schedule': crontab(hour=9, minute=00)
 }
 
 # ensure jira status reflect on defectdojo findings
-CELERY_BEAT_SCHEDULE['jira_status_reconciliation'] = { 
+CELERY_BEAT_SCHEDULE['jira_status_reconciliation'] = {
     'task': 'dojo.tasks.jira_status_reconciliation_task',
     'schedule': timedelta(hours=24),
     'kwargs': {'mode': 'import_status_from_jira', 'dryrun': False, 'daysback': 2}
@@ -27,6 +27,10 @@ CELERY_BEAT_SCHEDULE['jira_status_reconciliation'] = {
 HASHCODE_FIELDS_PER_SCANNER['Anchore Engine Scan'] = ['title', 'severity', 'component_name', 'component_version', 'file_path']
 HASHCODE_ALLOWS_NULL_CWE['Anchore Engine Scan'] = True
 DEDUPLICATION_ALGORITHM_PER_PARSER['Anchore Engine Scan'] = DEDUPE_ALGO_HASH_CODE
+
+HASHCODE_FIELDS_PER_SCANNER['Anchore Enterprise Policy Check'] = ['title', 'severity']
+HASHCODE_ALLOWS_NULL_CWE['Anchore Enterprise Policy Check'] = True
+DEDUPLICATION_ALGORITHM_PER_PARSER['Anchore Enterprise Policy Check'] = DEDUPE_ALGO_HASH_CODE
 
 HASHCODE_FIELDS_PER_SCANNER['Twistlock Image Scan'] = ['title', 'severity', 'component_name', 'component_version']
 HASHCODE_ALLOWS_NULL_CWE['Twistlock Image Scan'] = True
