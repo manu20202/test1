@@ -59,7 +59,8 @@ def auto_delete_engagements():
         all_duplicates=True,
         has_no_note=True
     ).exclude(
-        tags__name__contains=lock_tag
+        tags__name__contains=lock_tag,
+        original_finding__isnull=False
     )
 
     for engagement in engagements_to_delete:
